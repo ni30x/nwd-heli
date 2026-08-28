@@ -1,0 +1,374 @@
+
+Thread: main
+App version: 4.0-dev1
+Device: Nothing Galaxian, Android 15
+Locale: en_GB
+Stack trace:
+android.database.sqlite.SQLiteException: table TYPING_HISTORY_EVENTS already exists (code 1 SQLITE_ERROR): , while compiling: CREATE TABLE TYPING_HISTORY_EVENTS (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                TIMESTAMP INTEGER NOT NULL,
+                EVENT_TYPE TEXT NOT NULL,
+                TEXT_CONTENT TEXT,
+                DELETED_TEXT TEXT,
+                CHAR_COUNT INTEGER DEFAULT 0,
+                APP_PACKAGE TEXT NOT NULL,
+                APP_NAME TEXT,
+                INPUT_TYPE INTEGER,
+                SESSION_ID TEXT NOT NULL,
+                IS_SENTENCE_END INTEGER DEFAULT 0,
+                CREATED_AT INTEGER NOT NULL
+            )
+	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
+	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(SQLiteConnection.java:0)
+	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1562)
+	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1098)
+	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1126)
+	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:686)
+	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:614)
+	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:62)
+	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
+	at android.database.sqlite.SQLiteDatabase.executeSql(SQLiteDatabase.java:2206)
+	at android.database.sqlite.SQLiteDatabase.execSQL(SQLiteDatabase.java:2126)
+	at helium314.keyboard.latin.database.Database.onUpgrade(Database.kt:31)
+	at helium314.keyboard.latin.database.Database.onCreate(Database.kt:18)
+	at android.database.sqlite.SQLiteOpenHelper.getDatabaseLocked(SQLiteOpenHelper.java:410)
+	at android.database.sqlite.SQLiteOpenHelper.getReadableDatabase(SQLiteOpenHelper.java:340)
+	at helium314.keyboard.latin.database.TypingHistoryDao.getAllSessions(TypingHistoryDao.kt:251)
+	at helium314.keyboard.settings.screens.TypingHistorySettingsScreenKt$TypingHistorySettingsScreen$1$1.invokeSuspend(TypingHistorySettingsScreen.kt:41)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+	at androidx.compose.ui.platform.AndroidUiDispatcher.performTrampolineDispatch(AndroidUiDispatcher.android.kt:79)
+	at androidx.compose.ui.platform.AndroidUiDispatcher.access$performTrampolineDispatch(AndroidUiDispatcher.android.kt:41)
+	at androidx.compose.ui.platform.AndroidUiDispatcher$dispatchCallback$1.run(AndroidUiDispatcher.android.kt:57)
+	at android.os.Handler.handleCallback(Handler.java:959)
+	at android.os.Handler.dispatchMessage(Handler.java:100)
+	at android.os.Looper.loopOnce(Looper.java:267)
+	at android.os.Looper.loop(Looper.java:371)
+	at android.app.ActivityThread.main(ActivityThread.java:8844)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:620)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:966)
+	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [androidx.compose.ui.platform.MotionDurationScaleImpl@ce67ad5, androidx.compose.runtime.BroadcastFrameClock@d4d62ea, StandaloneCoroutine{Cancelling}@91299db, AndroidUiDispatcher@22e6c78]
+
+Last log:
+2026-08-08 19:30:32.769424 I FoldableUtils: not foldable
+2026-08-08 19:30:32.821852 I startup: Starting helium314.keyboard.debug version 4.0-dev1 (4006) on Android 15 (SDK 35)
+2026-08-08 19:30:32.861536 I InputAttributes: InputType.TYPE_NULL is specified
+2026-08-08 19:30:32.861705 I Settings: loadSettings
+2026-08-08 19:30:32.879555 W JniUtils: Could not load system glide typing library jni_latinimegoogle: dlopen failed: library "libjni_latinimegoogle.so" not found
+2026-08-08 19:30:32.881727 W JniUtils: Could not load native library jni_latinime
+java.lang.UnsatisfiedLinkError: dlopen failed: library "libjni_latinime.so" not found
+	at java.lang.Runtime.loadLibrary0(Runtime.java:1111)
+	at java.lang.Runtime.loadLibrary0(Runtime.java:1033)
+	at java.lang.System.loadLibrary(System.java:1765)
+	at helium314.keyboard.latin.utils.JniUtils.<clinit>(JniUtils.java:106)
+	at helium314.keyboard.latin.settings.SettingsValues.<init>(SettingsValues.java:255)
+	at helium314.keyboard.latin.settings.Settings.lambda$loadSettings$0(Settings.java:311)
+	at helium314.keyboard.latin.settings.Settings$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+	at helium314.keyboard.latin.utils.RunInLocaleKt.runInLocale(RunInLocale.kt:15)
+	at helium314.keyboard.latin.settings.Settings.loadSettings(Settings.java:310)
+	at helium314.keyboard.settings.SettingsActivity.onCreate(SettingsActivity.kt:78)
+	at android.app.Activity.performCreate(Activity.java:9002)
+	at android.app.Activity.performCreate(Activity.java:8980)
+	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1545)
+	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4121)
+	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4326)
+	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:112)
+	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:174)
+	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:109)
+	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:81)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2707)
+	at android.os.Handler.dispatchMessage(Handler.java:107)
+	at android.os.Looper.loopOnce(Looper.java:267)
+	at android.os.Looper.loop(Looper.java:371)
+	at android.app.ActivityThread.main(ActivityThread.java:8844)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:620)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:966)
+
+2026-08-08 19:30:36.471259 I LatinIME: Hardware accelerated drawing: true
+2026-08-08 19:30:36.488161 W InputAttributes: No editor info for this field. Bug?
+2026-08-08 19:30:36.488316 I Settings: loadSettings
+2026-08-08 19:30:36.491156 I DictionaryFacilitatorImpl: resetDictionaries, force reloading main dictionary: false
+2026-08-08 19:30:36.507224 E ClipboardDao: can't create ClipboardDao
+android.database.sqlite.SQLiteException: table TYPING_HISTORY_EVENTS already exists (code 1 SQLITE_ERROR): , while compiling: CREATE TABLE TYPING_HISTORY_EVENTS (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                TIMESTAMP INTEGER NOT NULL,
+                EVENT_TYPE TEXT NOT NULL,
+                TEXT_CONTENT TEXT,
+                DELETED_TEXT TEXT,
+                CHAR_COUNT INTEGER DEFAULT 0,
+                APP_PACKAGE TEXT NOT NULL,
+                APP_NAME TEXT,
+                INPUT_TYPE INTEGER,
+                SESSION_ID TEXT NOT NULL,
+                IS_SENTENCE_END INTEGER DEFAULT 0,
+                CREATED_AT INTEGER NOT NULL
+            )
+	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
+	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(SQLiteConnection.java:0)
+	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1562)
+	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1098)
+	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1126)
+	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:686)
+	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:614)
+	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:62)
+	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
+	at android.database.sqlite.SQLiteDatabase.executeSql(SQLiteDatabase.java:2206)
+	at android.database.sqlite.SQLiteDatabase.execSQL(SQLiteDatabase.java:2126)
+	at helium314.keyboard.latin.database.Database.onUpgrade(Database.kt:31)
+	at helium314.keyboard.latin.database.Database.onCreate(Database.kt:18)
+	at android.database.sqlite.SQLiteOpenHelper.getDatabaseLocked(SQLiteOpenHelper.java:410)
+	at android.database.sqlite.SQLiteOpenHelper.getReadableDatabase(SQLiteOpenHelper.java:340)
+	at helium314.keyboard.latin.database.ClipboardDao.<init>(ClipboardDao.kt:39)
+	at helium314.keyboard.latin.database.ClipboardDao.<init>(ClipboardDao.kt:0)
+	at helium314.keyboard.latin.database.ClipboardDao$Companion.getInstance(ClipboardDao.kt:280)
+	at helium314.keyboard.latin.ClipboardHistoryManager.onCreate(ClipboardHistoryManager.kt:53)
+	at helium314.keyboard.latin.LatinIME.onCreate(LatinIME.java:553)
+	at android.app.ActivityThread.handleCreateService(ActivityThread.java:5086)
+	at android.app.ActivityThread.-$$Nest$mhandleCreateService(ActivityThread.java:0)
+	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2515)
+	at android.os.Handler.dispatchMessage(Handler.java:107)
+	at android.os.Looper.loopOnce(Looper.java:267)
+	at android.os.Looper.loop(Looper.java:371)
+	at android.app.ActivityThread.main(ActivityThread.java:8844)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:620)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:966)
+
+2026-08-08 19:30:36.521681 E DictionaryFacilitatorImpl: could not initialize main dictionaries for [en_GB]
+java.lang.UnsatisfiedLinkError: No implementation found for long com.android.inputmethod.latin.BinaryDictionary.openNative(java.lang.String, long, long, boolean) (tried Java_com_android_inputmethod_latin_BinaryDictionary_openNative and Java_com_android_inputmethod_latin_BinaryDictionary_openNative__Ljava_lang_String_2JJZ) - is the library loaded, e.g. System.loadLibrary?
+	at com.android.inputmethod.latin.BinaryDictionary.openNative(Native Method)
+	at com.android.inputmethod.latin.BinaryDictionary.loadDictionary(BinaryDictionary.java:211)
+	at com.android.inputmethod.latin.BinaryDictionary.<init>(BinaryDictionary.java:119)
+	at com.android.inputmethod.latin.utils.BinaryDictionaryUtils.getHeaderWithOffsetAndLength(BinaryDictionaryUtils.java:47)
+	at com.android.inputmethod.latin.utils.BinaryDictionaryUtils.getHeader(BinaryDictionaryUtils.java:40)
+	at helium314.keyboard.latin.utils.DictionaryInfoUtils.getDictionaryFileHeaderOrNull(DictionaryInfoUtils.kt:120)
+	at helium314.keyboard.latin.dictionary.DictionaryFactory.getDictionary(DictionaryFactory.kt:87)
+	at helium314.keyboard.latin.dictionary.DictionaryFactory.checkAndAddDictionaryToListIfNewType(DictionaryFactory.kt:73)
+	at helium314.keyboard.latin.dictionary.DictionaryFactory.getMainDictsForLocale(DictionaryFactory.kt:43)
+	at helium314.keyboard.latin.dictionary.DictionaryFactory.createMainDictionaryCollection(DictionaryFactory.kt:28)
+	at helium314.keyboard.latin.DictionaryFacilitatorImpl$asyncReloadUninitializedMainDictionaries$1.invokeSuspend(DictionaryFacilitatorImpl.kt:248)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:584)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:811)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:715)
+	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)
+
+2026-08-08 19:30:36.525995 I LatinIME: ringer mode changed, zen_mode on: false
+2026-08-08 19:30:36.548757 D LatinIME: onInitializeInterface
+2026-08-08 19:30:36.555417 I Settings: loadSettings
+2026-08-08 19:30:37.138849 I LatinIME: onFinishInput
+2026-08-08 19:30:38.118541 I LatinIME: onFinishInput
+2026-08-08 19:30:39.919072 I LatinIME: onFinishInput
+2026-08-08 19:30:41.460488 I LatinIME: onFinishInput
+2026-08-08 19:30:41.482901 D KeyboardSwitcher: create new input view
+2026-08-08 19:30:41.610417 D BogusMoveEventDetector: needsProximateBogusDownMoveUpEventHack=false smallestScreenWidthDp=411 densityDpi=420 screenMetrics=0
+2026-08-08 19:30:41.653335 D BogusMoveEventDetector: needsProximateBogusDownMoveUpEventHack=false smallestScreenWidthDp=411 densityDpi=420 screenMetrics=0
+2026-08-08 19:30:41.670645 D BogusMoveEventDetector: needsProximateBogusDownMoveUpEventHack=false smallestScreenWidthDp=411 densityDpi=420 screenMetrics=0
+2026-08-08 19:30:41.702382 E LatinIME: Error recording typing history session start
+android.database.sqlite.SQLiteException: table TYPING_HISTORY_EVENTS already exists (code 1 SQLITE_ERROR): , while compiling: CREATE TABLE TYPING_HISTORY_EVENTS (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                TIMESTAMP INTEGER NOT NULL,
+                EVENT_TYPE TEXT NOT NULL,
+                TEXT_CONTENT TEXT,
+                DELETED_TEXT TEXT,
+                CHAR_COUNT INTEGER DEFAULT 0,
+                APP_PACKAGE TEXT NOT NULL,
+                APP_NAME TEXT,
+                INPUT_TYPE INTEGER,
+                SESSION_ID TEXT NOT NULL,
+                IS_SENTENCE_END INTEGER DEFAULT 0,
+                CREATED_AT INTEGER NOT NULL
+            )
+	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
+	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(SQLiteConnection.java:0)
+	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1562)
+	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1098)
+	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1126)
+	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:686)
+	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:614)
+	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:62)
+	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
+	at android.database.sqlite.SQLiteDatabase.executeSql(SQLiteDatabase.java:2206)
+	at android.database.sqlite.SQLiteDatabase.execSQL(SQLiteDatabase.java:2126)
+	at helium314.keyboard.latin.database.Database.onUpgrade(Database.kt:31)
+	at helium314.keyboard.latin.database.Database.onCreate(Database.kt:18)
+	at android.database.sqlite.SQLiteOpenHelper.getDatabaseLocked(SQLiteOpenHelper.java:410)
+	at android.database.sqlite.SQLiteOpenHelper.getWritableDatabase(SQLiteOpenHelper.java:316)
+	at helium314.keyboard.latin.database.TypingHistoryDao.upsertSession(TypingHistoryDao.kt:221)
+	at helium314.keyboard.latin.TypingHistoryRecorder.recordSessionStart(TypingHistoryRecorder.kt:309)
+	at helium314.keyboard.latin.TypingHistoryRecorder.onStartInputView(TypingHistoryRecorder.kt:75)
+	at helium314.keyboard.latin.LatinIME.onStartInputViewInternal(LatinIME.java:860)
+	at helium314.keyboard.latin.LatinIME$UIHandler.onStartInputView(LatinIME.java:487)
+	at helium314.keyboard.latin.LatinIME.onStartInputView(LatinIME.java:789)
+	at android.inputmethodservice.InputMethodService.startViews(InputMethodService.java:3216)
+	at android.inputmethodservice.InputMethodService.showWindow(InputMethodService.java:3115)
+	at android.inputmethodservice.InputMethodService$InputMethodImpl.showSoftInput(InputMethodService.java:1032)
+	at android.inputmethodservice.InputMethodService$InputMethodImpl.showSoftInputWithToken(InputMethodService.java:992)
+	at android.inputmethodservice.IInputMethodWrapper.executeMessage(IInputMethodWrapper.java:232)
+	at com.android.internal.os.HandlerCaller$MyHandler.handleMessage(HandlerCaller.java:44)
+	at android.os.Handler.dispatchMessage(Handler.java:107)
+	at android.os.Looper.loopOnce(Looper.java:267)
+	at android.os.Looper.loop(Looper.java:371)
+	at android.app.ActivityThread.main(ActivityThread.java:8844)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:620)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:966)
+
+2026-08-08 19:30:41.704576 I Settings: loadSettings
+2026-08-08 19:30:41.707407 I LatinIME: Starting input. Cursor position = 0,0
+2026-08-08 19:30:41.708841 D LatinIME: editorInfo: inputType: 0x00080011, imeOptions: 0x12000002
+2026-08-08 19:30:41.708888 D LatinIME: All caps: false, sentence caps: false, word caps: false
+2026-08-08 19:30:41.764644 D KeyboardState: loadLayout(Alphabet{shiftMode=UNSHIFT, autoCapsFlags=none, recapitalizeMode=null})
+2026-08-08 19:30:41.826771 D KeyboardParser: adding key q, 0
+2026-08-08 19:30:41.828637 D KeyboardParser: adding key w, 0
+2026-08-08 19:30:41.828988 D KeyboardParser: adding key e, 0
+2026-08-08 19:30:41.829288 D KeyboardParser: adding key r, 0
+2026-08-08 19:30:41.829469 D KeyboardParser: adding key t, 0
+2026-08-08 19:30:41.829608 D KeyboardParser: adding key y, 0
+2026-08-08 19:30:41.829758 D KeyboardParser: adding key u, 0
+2026-08-08 19:30:41.829949 D KeyboardParser: adding key i, 0
+2026-08-08 19:30:41.830126 D KeyboardParser: adding key o, 0
+2026-08-08 19:30:41.830381 D KeyboardParser: adding key p, 0
+2026-08-08 19:30:41.830659 D KeyboardParser: adding key a, 0
+2026-08-08 19:30:41.830896 D KeyboardParser: adding key s, 0
+2026-08-08 19:30:41.831026 D KeyboardParser: adding key d, 0
+2026-08-08 19:30:41.831135 D KeyboardParser: adding key f, 0
+2026-08-08 19:30:41.831233 D KeyboardParser: adding key g, 0
+2026-08-08 19:30:41.831326 D KeyboardParser: adding key h, 0
+2026-08-08 19:30:41.831417 D KeyboardParser: adding key j, 0
+2026-08-08 19:30:41.831523 D KeyboardParser: adding key k, 0
+2026-08-08 19:30:41.831621 D KeyboardParser: adding key l, 0
+2026-08-08 19:30:41.832291 D KeyboardParser: adding key z, 0
+2026-08-08 19:30:41.832439 D KeyboardParser: adding key x, 0
+2026-08-08 19:30:41.832546 D KeyboardParser: adding key c, 0
+2026-08-08 19:30:41.832671 D KeyboardParser: adding key v, 0
+2026-08-08 19:30:41.832767 D KeyboardParser: adding key b, 0
+2026-08-08 19:30:41.832858 D KeyboardParser: adding key n, 0
+2026-08-08 19:30:41.832965 D KeyboardParser: adding key m, 0
+2026-08-08 19:30:41.834830 D Keyboard.Builder: setting size and position for q, 113: x 0, w 108
+2026-08-08 19:30:41.834885 D Keyboard.Builder: setting size and position for w, 119: x 108, w 108
+2026-08-08 19:30:41.834902 D Keyboard.Builder: setting size and position for e, 101: x 216, w 108
+2026-08-08 19:30:41.834914 D Keyboard.Builder: setting size and position for r, 114: x 324, w 108
+2026-08-08 19:30:41.834924 D Keyboard.Builder: setting size and position for t, 116: x 432, w 108
+2026-08-08 19:30:41.834935 D Keyboard.Builder: setting size and position for y, 121: x 540, w 108
+2026-08-08 19:30:41.834945 D Keyboard.Builder: setting size and position for u, 117: x 648, w 108
+2026-08-08 19:30:41.834956 D Keyboard.Builder: setting size and position for i, 105: x 756, w 108
+2026-08-08 19:30:41.834967 D Keyboard.Builder: setting size and position for o, 111: x 864, w 108
+2026-08-08 19:30:41.834977 D Keyboard.Builder: setting size and position for p, 112: x 972, w 108
+2026-08-08 19:30:41.834996 D Keyboard.Builder: setting size and position for null, -10008: x 0, w 53
+2026-08-08 19:30:41.835015 D Keyboard.Builder: setting size and position for a, 97: x 53, w 108
+2026-08-08 19:30:41.835027 D Keyboard.Builder: setting size and position for s, 115: x 161, w 108
+2026-08-08 19:30:41.835038 D Keyboard.Builder: setting size and position for d, 100: x 269, w 108
+2026-08-08 19:30:41.835048 D Keyboard.Builder: setting size and position for f, 102: x 377, w 108
+2026-08-08 19:30:41.835058 D Keyboard.Builder: setting size and position for g, 103: x 485, w 108
+2026-08-08 19:30:41.835068 D Keyboard.Builder: setting size and position for h, 104: x 593, w 108
+2026-08-08 19:30:41.835079 D Keyboard.Builder: setting size and position for j, 106: x 701, w 108
+2026-08-08 19:30:41.835090 D Keyboard.Builder: setting size and position for k, 107: x 809, w 108
+2026-08-08 19:30:41.835100 D Keyboard.Builder: setting size and position for l, 108: x 917, w 108
+2026-08-08 19:30:41.835111 D Keyboard.Builder: setting size and position for null, -10008: x 1026, w 53
+2026-08-08 19:30:41.835128 D Keyboard.Builder: setting size and position for shift_key, -11: x 0, w 162
+2026-08-08 19:30:41.835140 D Keyboard.Builder: setting size and position for z, 122: x 162, w 108
+2026-08-08 19:30:41.835151 D Keyboard.Builder: setting size and position for x, 120: x 270, w 108
+2026-08-08 19:30:41.835161 D Keyboard.Builder: setting size and position for c, 99: x 378, w 108
+2026-08-08 19:30:41.835171 D Keyboard.Builder: setting size and position for v, 118: x 486, w 108
+2026-08-08 19:30:41.835181 D Keyboard.Builder: setting size and position for b, 98: x 594, w 108
+2026-08-08 19:30:41.835191 D Keyboard.Builder: setting size and position for n, 110: x 702, w 108
+2026-08-08 19:30:41.835201 D Keyboard.Builder: setting size and position for m, 109: x 810, w 108
+2026-08-08 19:30:41.835211 D Keyboard.Builder: setting size and position for delete_key, -7: x 918, w 162
+2026-08-08 19:30:41.835223 D Keyboard.Builder: setting size and position for ?123, -10001: x 0, w 162
+2026-08-08 19:30:41.835245 D Keyboard.Builder: setting size and position for /, 47: x 162, w 108
+2026-08-08 19:30:41.835257 D Keyboard.Builder: setting size and position for space_key, 32: x 270, w 540
+2026-08-08 19:30:41.835268 D Keyboard.Builder: setting size and position for ., 46: x 810, w 108
+2026-08-08 19:30:41.835278 D Keyboard.Builder: setting size and position for go_key, 10: x 918, w 162
+2026-08-08 19:30:41.841436 E ProximityInfo: could not create proximity info
+java.lang.UnsatisfiedLinkError: No implementation found for long com.android.inputmethod.keyboard.ProximityInfo.setProximityInfoNative(int, int, int, int, int, int, int[], int, int[], int[], int[], int[], int[], float[], float[], float[]) (tried Java_com_android_inputmethod_keyboard_ProximityInfo_setProximityInfoNative and Java_com_android_inputmethod_keyboard_ProximityInfo_setProximityInfoNative__IIIIII_3II_3I_3I_3I_3I_3I_3F_3F_3F) - is the library loaded, e.g. System.loadLibrary?
+	at com.android.inputmethod.keyboard.ProximityInfo.setProximityInfoNative(Native Method)
+	at com.android.inputmethod.keyboard.ProximityInfo.createNativeProximityInfo(ProximityInfo.java:217)
+	at com.android.inputmethod.keyboard.ProximityInfo.<init>(ProximityInfo.java:74)
+	at helium314.keyboard.keyboard.Keyboard.<init>(Keyboard.java:114)
+	at helium314.keyboard.keyboard.internal.KeyboardBuilder.build(KeyboardBuilder.kt:109)
+	at helium314.keyboard.keyboard.KeyboardLayoutSet.getKeyboard(KeyboardLayoutSet.kt:87)
+	at helium314.keyboard.keyboard.KeyboardLayoutSet.getKeyboard(KeyboardLayoutSet.kt:64)
+	at helium314.keyboard.keyboard.KeyboardSwitcher.setKeyboard(KeyboardSwitcher.java:215)
+	at helium314.keyboard.keyboard.KeyboardSwitcher.setAlphabetKeyboard(KeyboardSwitcher.java:266)
+	at helium314.keyboard.keyboard.internal.KeyboardState.loadLayout(KeyboardState.kt:173)
+	at helium314.keyboard.keyboard.internal.KeyboardState.onLoadKeyboard(KeyboardState.kt:111)
+	at helium314.keyboard.keyboard.KeyboardSwitcher.loadKeyboard(KeyboardSwitcher.java:173)
+	at helium314.keyboard.keyboard.KeyboardSwitcher.reloadMainKeyboard(KeyboardSwitcher.java:544)
+	at helium314.keyboard.latin.LatinIME.onStartInputViewInternal(LatinIME.java:976)
+	at helium314.keyboard.latin.LatinIME$UIHandler.onStartInputView(LatinIME.java:487)
+	at helium314.keyboard.latin.LatinIME.onStartInputView(LatinIME.java:789)
+	at android.inputmethodservice.InputMethodService.startViews(InputMethodService.java:3216)
+	at android.inputmethodservice.InputMethodService.showWindow(InputMethodService.java:3115)
+	at android.inputmethodservice.InputMethodService$InputMethodImpl.showSoftInput(InputMethodService.java:1032)
+	at android.inputmethodservice.InputMethodService$InputMethodImpl.showSoftInputWithToken(InputMethodService.java:992)
+	at android.inputmethodservice.IInputMethodWrapper.executeMessage(IInputMethodWrapper.java:232)
+	at com.android.internal.os.HandlerCaller$MyHandler.handleMessage(HandlerCaller.java:44)
+	at android.os.Handler.dispatchMessage(Handler.java:107)
+	at android.os.Looper.loopOnce(Looper.java:267)
+	at android.os.Looper.loop(Looper.java:371)
+	at android.app.ActivityThread.main(ActivityThread.java:8844)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:620)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:966)
+
+2026-08-08 19:30:43.955385 I LatinIME: requestHideSelf: 0
+2026-08-08 19:30:43.969968 I LatinIME: hideWindow
+2026-08-08 19:30:43.972667 I LatinIME: onFinishInputView
+2026-08-08 19:30:43.980575 E LatinIME: Error recording typing history session end
+android.database.sqlite.SQLiteException: table TYPING_HISTORY_EVENTS already exists (code 1 SQLITE_ERROR): , while compiling: CREATE TABLE TYPING_HISTORY_EVENTS (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                TIMESTAMP INTEGER NOT NULL,
+                EVENT_TYPE TEXT NOT NULL,
+                TEXT_CONTENT TEXT,
+                DELETED_TEXT TEXT,
+                CHAR_COUNT INTEGER DEFAULT 0,
+                APP_PACKAGE TEXT NOT NULL,
+                APP_NAME TEXT,
+                INPUT_TYPE INTEGER,
+                SESSION_ID TEXT NOT NULL,
+                IS_SENTENCE_END INTEGER DEFAULT 0,
+                CREATED_AT INTEGER NOT NULL
+            )
+	at android.database.sqlite.SQLiteConnection.nativePrepareStatement(Native Method)
+	at android.database.sqlite.SQLiteConnection.-$$Nest$smnativePrepareStatement(SQLiteConnection.java:0)
+	at android.database.sqlite.SQLiteConnection$PreparedStatementCache.createStatement(SQLiteConnection.java:1562)
+	at android.database.sqlite.SQLiteConnection.acquirePreparedStatementLI(SQLiteConnection.java:1098)
+	at android.database.sqlite.SQLiteConnection.acquirePreparedStatement(SQLiteConnection.java:1126)
+	at android.database.sqlite.SQLiteConnection.prepare(SQLiteConnection.java:686)
+	at android.database.sqlite.SQLiteSession.prepare(SQLiteSession.java:614)
+	at android.database.sqlite.SQLiteProgram.<init>(SQLiteProgram.java:62)
+	at android.database.sqlite.SQLiteStatement.<init>(SQLiteStatement.java:34)
+	at android.database.sqlite.SQLiteDatabase.executeSql(SQLiteDatabase.java:2206)
+	at android.database.sqlite.SQLiteDatabase.execSQL(SQLiteDatabase.java:2126)
+	at helium314.keyboard.latin.database.Database.onUpgrade(Database.kt:31)
+	at helium314.keyboard.latin.database.Database.onCreate(Database.kt:18)
+	at android.database.sqlite.SQLiteOpenHelper.getDatabaseLocked(SQLiteOpenHelper.java:410)
+	at android.database.sqlite.SQLiteOpenHelper.getReadableDatabase(SQLiteOpenHelper.java:340)
+	at helium314.keyboard.latin.database.TypingHistoryDao.getEventsBySession(TypingHistoryDao.kt:145)
+	at helium314.keyboard.latin.TypingHistoryRecorder.endSession(TypingHistoryRecorder.kt:253)
+	at helium314.keyboard.latin.TypingHistoryRecorder.onFinishInputView(TypingHistoryRecorder.kt:86)
+	at helium314.keyboard.latin.LatinIME.onFinishInputViewInternal(LatinIME.java:1052)
+	at helium314.keyboard.latin.LatinIME$UIHandler.onFinishInputView(LatinIME.java:501)
+	at helium314.keyboard.latin.LatinIME.onFinishInputView(LatinIME.java:796)
+	at android.inputmethodservice.InputMethodService.finishViews(InputMethodService.java:3245)
+	at android.inputmethodservice.InputMethodService.hideWindow(InputMethodService.java:3284)
+	at helium314.keyboard.latin.LatinIME.hideWindow(LatinIME.java:1149)
+	at android.inputmethodservice.InputMethodService$InputMethodImpl.hideSoftInput(InputMethodService.java:967)
+	at android.inputmethodservice.InputMethodService$InputMethodImpl.hideSoftInputWithToken(InputMethodService.java:927)
+	at android.inputmethodservice.IInputMethodWrapper.executeMessage(IInputMethodWrapper.java:247)
+	at com.android.internal.os.HandlerCaller$MyHandler.handleMessage(HandlerCaller.java:44)
+	at android.os.Handler.dispatchMessage(Handler.java:107)
+	at android.os.Looper.loopOnce(Looper.java:267)
+	at android.os.Looper.loop(Looper.java:371)
+	at android.app.ActivityThread.main(ActivityThread.java:8844)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:620)
+	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:966)
+
+2026-08-08 19:30:43.981221 I LatinIME: onWindowHidden
+2026-08-08 19:30:44.459669 I LatinIME: onFinishInput
+2026-08-08 19:30:46.003139 I LatinIME: onFinishInput
