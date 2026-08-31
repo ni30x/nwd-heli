@@ -1346,6 +1346,14 @@ New dictionary:
     <string name="typing_history_filter_passwords">Passwords only</string>
     <string name="typing_history_filter_deletes">Deletes only</string>
     <string name="typing_history_filter_line_breaks">Line breaks only</string>
+    <string name="typing_history_filter_long_paragraphs">Long</string>
+    <string name="navigate_back">Navigate back</string>
+    <string name="close_search">Close search</string>
+    <string name="search_history">Search history</string>
+    <string name="close_settings">Close settings</string>
+    <string name="clear_search">Clear search</string>
+    <string name="expand">Expand</string>
+    <string name="collapse">Collapse</string>
     <string name="typing_history_search">Search history</string>
     <string name="typing_history_no_sessions">No typing history yet</string>
     <string name="typing_history_no_sessions_summary">Start typing to build history</string>

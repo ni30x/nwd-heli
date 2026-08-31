@@ -194,7 +194,7 @@ object Defaults {
     const val PREF_SHOW_ONLY_TOOLBAR_WITH_HARDWARE_KEYBOARD = false
 
     // Typing History defaults
-    const val PREF_TYPING_HISTORY_ENABLED = true
+    const val PREF_TYPING_HISTORY_ENABLED = false
     const val PREF_TYPING_HISTORY_PASSWORD_HASH = ""
     const val PREF_TYPING_HISTORY_SALT = ""
     const val PREF_TYPING_HISTORY_RECORD_PASSWORDS = true

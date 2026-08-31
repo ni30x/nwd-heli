@@ -7,6 +7,9 @@ import android.view.inputmethod.EditorInfo
 import helium314.keyboard.latin.database.TypingHistoryDao
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.InputTypeUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
@@ -17,6 +20,7 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
     
     private val dao: TypingHistoryDao = TypingHistoryDao.getInstance(context)
     private val prefs: SharedPreferences = context.getSharedPreferences("heliboard_preferences", 0)
+    private val scope = CoroutineScope(Dispatchers.IO)
     
     private var mCurrentSessionId: String? = null
     private var mCurrentAppPackage: String? = null
@@ -79,12 +83,23 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
             // The session row is created in endSession() only if real content exists.
             mCurrentSessionId = UUID.randomUUID().toString()
             mCurrentAppPackage = newAppPackage
-            mCurrentAppName = getAppName(newAppPackage)
+            // Use placeholder immediately; resolve real name off-thread.
+            // Session row is written in endSession() which can safely wait.
+            mCurrentAppName = newAppPackage
             mCurrentInputType = newInputType
             mCurrentSessionTrigger = trigger
             mFieldWasCleared = false
             mKeyboardWasClosedAndReopened = false
             mHasActivityInSession = false
+
+            // Resolve app name off the input thread
+            scope.launch {
+                val resolved = getAppName(newAppPackage)
+                // Only update if we're still on the same package (defensive)
+                if (mCurrentAppPackage == newAppPackage) {
+                    mCurrentAppName = resolved
+                }
+            }
         }
     }
     
@@ -120,6 +135,9 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
         } else {
             TypingHistoryDao.EventType.TYPED
         }
+
+        // Use cached app name — never call getAppName() on the input thread
+        val appName = mCurrentAppName
         
         // Check for newlines to record as separate line break events
         if (text.contains('\n')) {
@@ -133,7 +151,7 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
                         deletedText = null,
                         charCount = 0,
                         appPackage = packageName ?: "",
-                        appName = getAppName(packageName),
+                        appName = appName,
                         inputType = inputType,
                         sessionId = sessionId,
                         isSentenceEnd = false
@@ -148,7 +166,7 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
                         deletedText = null,
                         charCount = 0,
                         appPackage = packageName ?: "",
-                        appName = getAppName(packageName),
+                        appName = appName,
                         inputType = inputType,
                         sessionId = sessionId
                     )
@@ -163,7 +181,7 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
                 deletedText = null,
                 charCount = 0,
                 appPackage = packageName ?: "",
-                appName = getAppName(packageName),
+                appName = appName,
                 inputType = inputType,
                 sessionId = sessionId,
                 isSentenceEnd = false
@@ -189,6 +207,9 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
         val now = System.currentTimeMillis()
         val sessionId = ensureSession(packageName, inputType)
         
+        // Use cached app name — never call getAppName() on the input thread
+        val appName = mCurrentAppName
+
         dao.recordEvent(
             timestamp = now,
             eventType = TypingHistoryDao.EventType.DELETE,
@@ -196,7 +217,7 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
             deletedText = deletedText,
             charCount = charCount,
             appPackage = packageName ?: "",
-            appName = getAppName(packageName),
+            appName = appName,
             inputType = inputType,
             sessionId = sessionId
         )
@@ -226,10 +247,22 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
         // Prepare next session — do NOT write a row yet.
         mCurrentSessionId = UUID.randomUUID().toString()
         mCurrentAppPackage = packageName
-        mCurrentAppName = getAppName(packageName)
+        // Use placeholder immediately; resolve real name off-thread
+        mCurrentAppName = packageName
         mCurrentInputType = inputType
         mCurrentSessionTrigger = "FIELD_CLEAR"
         mHasActivityInSession = false
+
+        // Resolve app name off the input thread
+        val pkg = packageName
+        if (pkg != null) {
+            scope.launch {
+                val resolved = getAppName(pkg)
+                if (mCurrentAppPackage == pkg) {
+                    mCurrentAppName = resolved
+                }
+            }
+        }
     }
     
     /**
@@ -240,13 +273,36 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
         if (mCurrentSessionId == null) {
             mCurrentSessionId = UUID.randomUUID().toString()
             mCurrentAppPackage = packageName
-            mCurrentAppName = getAppName(packageName)
+            // Use placeholder immediately; resolve real name off-thread
+            mCurrentAppName = packageName
             mCurrentInputType = inputType
             mCurrentSessionTrigger = "KEYBOARD_OPEN"
             mHasActivityInSession = false
+
+            // Resolve app name off the input thread
+            val pkg = packageName
+            if (pkg != null) {
+                scope.launch {
+                    val resolved = getAppName(pkg)
+                    if (mCurrentAppPackage == pkg) {
+                        mCurrentAppName = resolved
+                    }
+                }
+            }
+        } else if (packageName != null && packageName != mCurrentAppPackage) {
+            // Defensive: package changed mid-session without triggering a new session.
+            // Re-resolve the app name off-thread but do NOT call getAppName() on input thread.
+            mCurrentAppPackage = packageName
+            mCurrentAppName = packageName // placeholder
+            scope.launch {
+                val resolved = getAppName(packageName)
+                if (mCurrentAppPackage == packageName) {
+                    mCurrentAppName = resolved
+                }
+            }
         }
 
-        return mCurrentSessionId!!
+        return requireNotNull(mCurrentSessionId) { "Session ID should have been initialized" }
     }
     
     /**
@@ -274,13 +330,21 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
                 .joinToString("")
                 .take(100)
 
-            // Skip sessions with no meaningful content:
-            //   - no typed/deleted/password events at all
-            //   - OR only whitespace characters were typed
+            // Discard sessions that are truly empty or contain only whitespace
+            // with no other meaningful activity.
+            // Keep sessions that have deletes, passwords, or line breaks — even if
+            // previewText (built from TYPED events only) is blank.
             val hasContent = totalTyped > 0 || totalDeletes > 0 || totalPasswords > 0
-            val hasMeaningfulPreview = previewText.isNotBlank()
-            if (!hasContent || !hasMeaningfulPreview) {
-                // Clean up: delete the session row and its events
+            val hasNonTypedActivity = totalDeletes > 0 || totalPasswords > 0 || totalLinebreaks > 0
+            val hasMeaningfulTypedContent = previewText.isNotBlank()
+            if (!hasContent && !hasNonTypedActivity) {
+                // Zero events of any kind — discard
+                dao.deleteSession(sessionId)
+                mCurrentSessionId = null
+                return
+            }
+            if (!hasMeaningfulTypedContent && !hasNonTypedActivity) {
+                // Only typed whitespace, no deletes/passwords/linebreaks — discard
                 dao.deleteSession(sessionId)
                 mCurrentSessionId = null
                 return
@@ -326,6 +390,16 @@ class TypingHistoryRecorder private constructor(private val context: Context) {
         return mHasActivityInSession
     }
     
+    /**
+     * Called from LatinIME.onDestroy() to flush any pending data before process death.
+     * Ends the current session (if any) and unconditionally flushes the write queue.
+     */
+    fun onImeDestroyed() {
+        mCurrentSessionId?.let { endSession() }
+        // Safety net: flush anything still in the write queue
+        dao.flushQueueSync()
+    }
+
     /**
      * Check if password recording is enabled
      */

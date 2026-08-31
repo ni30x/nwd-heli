@@ -4,12 +4,28 @@ package helium314.keyboard.settings.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,10 +41,13 @@ import helium314.keyboard.latin.TypingHistoryBackupManager
 import helium314.keyboard.latin.TypingHistorySecurityManager
 import helium314.keyboard.latin.database.TypingHistoryDao
 import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.latin.utils.startOfLocalDay
 import helium314.keyboard.settings.dialogs.BackupPasswordDialog
 import helium314.keyboard.settings.dialogs.TypingHistoryPasswordDialog
 import helium314.keyboard.settings.dialogs.PasswordDialogMode
 import helium314.keyboard.settings.screens.components.SessionCard
+import helium314.keyboard.settings.screens.components.TimeBucketAccordion
+import helium314.keyboard.settings.screens.components.bucketEventsByTwoHours
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -73,19 +92,16 @@ fun TypingHistoryViewerScreen(
     val dayNameFormat = remember { SimpleDateFormat("EEE", Locale.getDefault()) }
     val monthFormat = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
 
-    // Center of the visible 5-day strip — defaults to today
+    // Center of the visible 5-day strip — defaults to today (local timezone)
     var centeredDateMillis by remember {
-        mutableStateOf(System.currentTimeMillis() / 86400000 * 86400000)
+        mutableStateOf(startOfLocalDay())
     }
 
-    // Auto-select today when switching to Calendar mode
-    LaunchedEffect(viewMode) {
-        if (viewMode == ViewMode.CALENDAR && selectedDateMillis == null) {
-            val today = System.currentTimeMillis() / 86400000 * 86400000
-            selectedDateMillis = today
-            centeredDateMillis = today
-        }
-    }
+    // Dates that have at least one session — used for calendar dot indicators
+    var datesWithHistory by remember { mutableStateOf<Set<Long>>(emptySet()) }
+
+    // Loading state
+    var isLoadingSessions by remember { mutableStateOf(true) }
 
     // Sessions state
     var sessions by remember { mutableStateOf<List<TypingHistoryDao.TypingSession>>(emptyList()) }
@@ -113,9 +129,24 @@ fun TypingHistoryViewerScreen(
     // Load all sessions after unlock
     LaunchedEffect(isUnlocked) {
         if (isUnlocked) {
+            isLoadingSessions = true
             sessions = dao.getAllSessions()
             totalSessions = sessions.size
             totalEvents = dao.getTotalEventCount()
+            isLoadingSessions = false
+        }
+    }
+
+    // Load which dates have sessions when entering Calendar mode or when sessions change
+    LaunchedEffect(viewMode, sessions) {
+        if (viewMode == ViewMode.CALENDAR) {
+            datesWithHistory = dao.getDatesWithSessions()
+            // Auto-select today if nothing selected yet
+            if (selectedDateMillis == null) {
+                val today = startOfLocalDay()
+                selectedDateMillis = today
+                centeredDateMillis = today
+            }
         }
     }
 
@@ -198,36 +229,40 @@ fun TypingHistoryViewerScreen(
     }
 
     // Filter sessions for All Recent view
-    val filteredSessions = remember(sessions, searchQuery, selectedFilter) {
-        val filtered = if (searchQuery.isBlank()) sessions else sessions.filter { session ->
-            session.previewText?.contains(searchQuery, ignoreCase = true) == true ||
-            session.appName?.contains(searchQuery, ignoreCase = true) == true ||
-            session.appPackage.contains(searchQuery, ignoreCase = true)
-        }
-        when (selectedFilter) {
-            FilterType.ALL -> filtered
-            FilterType.PASSWORDS -> filtered.filter { it.hasPasswords }
-            FilterType.DELETES -> filtered.filter { it.totalDeletes > 0 }
-            FilterType.LINE_BREAKS -> filtered.filter { it.totalLinebreaks > 0 }
-            FilterType.TYPED -> filtered.filter { it.totalTyped > 0 }
-            FilterType.LONG_PARAGRAPHS -> filtered.filter { (it.totalTyped + it.totalLinebreaks) > 50 }
+    val filteredSessions by remember(sessions, searchQuery, selectedFilter) {
+        derivedStateOf {
+            val filtered = if (searchQuery.isBlank()) sessions else sessions.filter { session ->
+                session.previewText?.contains(searchQuery, ignoreCase = true) == true ||
+                session.appName?.contains(searchQuery, ignoreCase = true) == true ||
+                session.appPackage.contains(searchQuery, ignoreCase = true)
+            }
+            when (selectedFilter) {
+                FilterType.ALL -> filtered
+                FilterType.PASSWORDS -> filtered.filter { it.hasPasswords }
+                FilterType.DELETES -> filtered.filter { it.totalDeletes > 0 }
+                FilterType.LINE_BREAKS -> filtered.filter { it.totalLinebreaks > 0 }
+                FilterType.TYPED -> filtered.filter { it.totalTyped > 0 }
+                FilterType.LONG_PARAGRAPHS -> filtered.filter { (it.totalTyped + it.totalLinebreaks) > 50 }
+            }
         }
     }
 
     // Filter calendar sessions by search/filter
-    val filteredCalendarSessions = remember(calendarSessions, searchQuery, selectedFilter) {
-        val filtered = if (searchQuery.isBlank()) calendarSessions else calendarSessions.filter { session ->
-            session.previewText?.contains(searchQuery, ignoreCase = true) == true ||
-            session.appName?.contains(searchQuery, ignoreCase = true) == true ||
-            session.appPackage.contains(searchQuery, ignoreCase = true)
-        }
-        when (selectedFilter) {
-            FilterType.ALL -> filtered
-            FilterType.PASSWORDS -> filtered.filter { it.hasPasswords }
-            FilterType.DELETES -> filtered.filter { it.totalDeletes > 0 }
-            FilterType.LINE_BREAKS -> filtered.filter { it.totalLinebreaks > 0 }
-            FilterType.TYPED -> filtered.filter { it.totalTyped > 0 }
-            FilterType.LONG_PARAGRAPHS -> filtered.filter { (it.totalTyped + it.totalLinebreaks) > 50 }
+    val filteredCalendarSessions by remember(calendarSessions, searchQuery, selectedFilter) {
+        derivedStateOf {
+            val filtered = if (searchQuery.isBlank()) calendarSessions else calendarSessions.filter { session ->
+                session.previewText?.contains(searchQuery, ignoreCase = true) == true ||
+                session.appName?.contains(searchQuery, ignoreCase = true) == true ||
+                session.appPackage.contains(searchQuery, ignoreCase = true)
+            }
+            when (selectedFilter) {
+                FilterType.ALL -> filtered
+                FilterType.PASSWORDS -> filtered.filter { it.hasPasswords }
+                FilterType.DELETES -> filtered.filter { it.totalDeletes > 0 }
+                FilterType.LINE_BREAKS -> filtered.filter { it.totalLinebreaks > 0 }
+                FilterType.TYPED -> filtered.filter { it.totalTyped > 0 }
+                FilterType.LONG_PARAGRAPHS -> filtered.filter { (it.totalTyped + it.totalLinebreaks) > 50 }
+            }
         }
     }
 
@@ -243,16 +278,22 @@ fun TypingHistoryViewerScreen(
                 title = { Text(stringResource(R.string.settings_screen_typing_history)) },
                 navigationIcon = {
                     IconButton(onClick = onClickBack) {
-                        Text("←")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.navigate_back))
                     }
                 },
                 actions = {
                     if (isUnlocked) {
                         IconButton(onClick = { showSearch = !showSearch }) {
-                            Text(if (showSearch) "✕" else "🔍")
+                            Icon(
+                                if (showSearch) Icons.Default.Clear else Icons.Default.Search,
+                                contentDescription = if (showSearch) stringResource(R.string.close_search) else stringResource(R.string.search_history)
+                            )
                         }
                         IconButton(onClick = { showSettingsBar = !showSettingsBar }) {
-                            Text(if (showSettingsBar) "✕" else "⚙")
+                            Icon(
+                                if (showSettingsBar) Icons.Default.Clear else Icons.Default.Settings,
+                                contentDescription = if (showSettingsBar) stringResource(R.string.close_settings) else stringResource(R.string.settings)
+                            )
                         }
                     }
                 }
@@ -354,7 +395,6 @@ fun TypingHistoryViewerScreen(
                                 }
                             }
 
-                            HorizontalDivider()
 
                             OutlinedButton(
                                 onClick = { showChangePasswordDialog = true },
@@ -368,7 +408,7 @@ fun TypingHistoryViewerScreen(
                                 )
                             }
 
-                            HorizontalDivider()
+                            Spacer(Modifier.height(4.dp))
 
                             Button(
                                 onClick = {
@@ -377,7 +417,9 @@ fun TypingHistoryViewerScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("📦 Backup")
+                                Icon(Icons.Outlined.Backup, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.typing_history_backup))
                             }
 
                             OutlinedButton(
@@ -386,7 +428,9 @@ fun TypingHistoryViewerScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("📂 Restore")
+                                Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.typing_history_restore))
                             }
 
                             OutlinedButton(
@@ -396,7 +440,9 @@ fun TypingHistoryViewerScreen(
                                     contentColor = MaterialTheme.colorScheme.error
                                 )
                             ) {
-                                Text("🗑 Clear All")
+                                Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.typing_history_clear_all))
                             }
 
                             statusMessage?.let { msg ->
@@ -418,10 +464,12 @@ fun TypingHistoryViewerScreen(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
                         placeholder = { Text(stringResource(R.string.typing_history_search)) },
-                        leadingIcon = { Text("🔍") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) { Text("✕") }
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.clear_search))
+                                }
                             }
                         },
                         singleLine = true,
@@ -431,14 +479,13 @@ fun TypingHistoryViewerScreen(
                     )
                 }
 
-                // ── Filter chips (shared by both modes) ──
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 0.dp),
+                // ── Filter chips (shared by both modes, scrollable) ──
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FilterType.entries.forEach { filter ->
+                    items(FilterType.entries) { filter ->
                         FilterChip(
                             selected = selectedFilter == filter,
                             onClick = { selectedFilter = filter },
@@ -446,36 +493,88 @@ fun TypingHistoryViewerScreen(
                                 Text(
                                     when (filter) {
                                         FilterType.ALL -> stringResource(R.string.typing_history_filter_all)
-                                        FilterType.TYPED -> "✍ Typed"
-                                        FilterType.PASSWORDS -> "🔑 Passwords"
-                                        FilterType.DELETES -> "⌫ Deletes"
-                                        FilterType.LINE_BREAKS -> "↵ Breaks"
-                                        FilterType.LONG_PARAGRAPHS -> "📝 Long"
+                                        FilterType.TYPED -> stringResource(R.string.typing_history_filter_typed)
+                                        FilterType.PASSWORDS -> stringResource(R.string.typing_history_filter_passwords)
+                                        FilterType.DELETES -> stringResource(R.string.typing_history_filter_deletes)
+                                        FilterType.LINE_BREAKS -> stringResource(R.string.typing_history_filter_line_breaks)
+                                        FilterType.LONG_PARAGRAPHS -> stringResource(R.string.typing_history_filter_long_paragraphs)
                                     }
                                 )
                             }
                         )
                     }
-                }
-
-	                // ── Content area ──
-	                when (viewMode) {
-	                    ViewMode.ALL_RECENT -> {
-	                        if (filteredSessions.isEmpty()) {
-	                            EmptyHistoryView()
-	                        } else {
-	                            LazyColumn(
-	                                modifier = Modifier.weight(1f),
-	                                contentPadding = PaddingValues(bottom = 16.dp)
+                }	                // ── Content area ──
+	                if (isLoadingSessions) {
+	                    // Loading skeleton
+	                    Column(
+	                        modifier = Modifier
+	                            .weight(1f)
+	                            .padding(horizontal = 16.dp)
+	                    ) {
+	                        repeat(5) {
+	                            Card(
+	                                modifier = Modifier
+	                                    .fillMaxWidth()
+	                                    .padding(vertical = 4.dp),
+	                                colors = CardDefaults.cardColors(
+	                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+	                                )
 	                            ) {
-	                                items(items = filteredSessions, key = { it.sessionId }) { session ->
-	                                    SessionCard(
-	                                        session = session,
-	                                        events = loadEvents(session.sessionId),
-	                                        maskPassword = maskPassword,
-	                                        highlightText = if (searchQuery.isBlank()) null else searchQuery,
-	                                        onDeleteSession = { deleteTarget = session.sessionId }
+	                                Row(
+	                                    modifier = Modifier
+	                                        .fillMaxWidth()
+	                                        .height(56.dp)
+	                                        .padding(horizontal = 12.dp),
+	                                    verticalAlignment = Alignment.CenterVertically
+	                                ) {
+	                                    Box(
+	                                        modifier = Modifier
+	                                            .size(20.dp)
+	                                            .clip(RoundedCornerShape(4.dp))
+	                                            .background(MaterialTheme.colorScheme.surfaceVariant)
 	                                    )
+	                                    Spacer(Modifier.width(8.dp))
+	                                    Box(
+	                                        modifier = Modifier
+	                                            .width(60.dp)
+	                                            .height(12.dp)
+	                                            .clip(RoundedCornerShape(4.dp))
+	                                            .background(MaterialTheme.colorScheme.surfaceVariant)
+	                                    )
+	                                    Spacer(Modifier.weight(1f))
+	                                    Box(
+	                                        modifier = Modifier
+	                                            .width(100.dp)
+	                                            .height(12.dp)
+	                                            .clip(RoundedCornerShape(4.dp))
+	                                            .background(MaterialTheme.colorScheme.surfaceVariant)
+	                                    )
+	                                }
+	                            }
+	                        }
+	                    }
+	                } else when (viewMode) {
+	                    ViewMode.ALL_RECENT -> {
+	                        Column(
+	                            modifier = Modifier
+	                                .weight(1f)
+	                                .padding(horizontal = 16.dp)
+	                        ) {
+	                            if (filteredSessions.isEmpty()) {
+	                                EmptyHistoryView()
+	                            } else {
+	                                LazyColumn(
+	                                    contentPadding = PaddingValues(bottom = 16.dp)
+	                                ) {
+	                                    items(items = filteredSessions, key = { it.sessionId }) { session ->
+	                                        SessionCard(
+	                                            session = session,
+	                                            events = loadEvents(session.sessionId),
+	                                            maskPassword = maskPassword,
+	                                            highlightText = if (searchQuery.isBlank()) null else searchQuery,
+	                                            onDeleteSession = { deleteTarget = session.sessionId }
+	                                        )
+	                                    }
 	                                }
 	                            }
 	                        }
@@ -500,12 +599,12 @@ fun TypingHistoryViewerScreen(
 	                                }) {
 	                                    Text("←", style = MaterialTheme.typography.titleMedium)
 	                                }
-	
+
 	                                for (offset in -2..2) {
 	                                    val dayMillis = centeredDateMillis + offset * 86400000
 	                                    val isSelected = selectedDateMillis == dayMillis
-	                                    val isToday = dayMillis == (System.currentTimeMillis() / 86400000 * 86400000)
-	
+	                                    val isToday = dayMillis == startOfLocalDay()
+
 	                                    Column(
 	                                        modifier = Modifier
 	                                            .clip(RoundedCornerShape(8.dp))
@@ -533,16 +632,23 @@ fun TypingHistoryViewerScreen(
 	                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
 	                                                    else MaterialTheme.colorScheme.onSurface
 	                                        )
-	                                        if (isToday) {
-	                                            Text(
-	                                                text = "•",
-	                                                style = MaterialTheme.typography.labelSmall,
-	                                                color = MaterialTheme.colorScheme.primary
-	                                            )
-	                                        }
+                                        // Dot indicator: primary if has history, subtle if today
+                                        val hasHistory = datesWithHistory.contains(startOfLocalDay(dayMillis))
+                                        if (hasHistory || isToday) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .padding(top = 2.dp)
+                                                    .size(5.dp)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        if (hasHistory) MaterialTheme.colorScheme.primary
+                                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                                    )
+                                            )
+                                        }
 	                                    }
 	                                }
-	
+
 	                                IconButton(onClick = {
 	                                    centeredDateMillis += 86400000
 	                                    selectedDateMillis = centeredDateMillis
@@ -550,7 +656,7 @@ fun TypingHistoryViewerScreen(
 	                                    Text("→", style = MaterialTheme.typography.titleMedium)
 	                                }
 	                            }
-	
+
 	                            // ── Expand / Collapse full calendar ──
 	                            OutlinedButton(
 	                                onClick = { showFullCalendar = !showFullCalendar },
@@ -564,7 +670,7 @@ fun TypingHistoryViewerScreen(
 	                                    style = MaterialTheme.typography.bodyMedium
 	                                )
 	                            }
-	
+
 	                            // ── Inline full calendar (Material 3 DatePicker) ──
 	                            if (showFullCalendar) {
 	                                Spacer(modifier = Modifier.height(8.dp))
@@ -582,36 +688,35 @@ fun TypingHistoryViewerScreen(
 	                                    modifier = Modifier.fillMaxWidth()
 	                                )
 	                            }
-	
-	                            Spacer(modifier = Modifier.height(8.dp))
-	
-	                            // ── Sessions for selected date ──
-	                            if (filteredCalendarSessions.isEmpty()) {
-	                                EmptyHistoryView()
-	                            } else {
-	                                Text(
-	                                    text = dateFormat.format(Date(selectedDateMillis ?: System.currentTimeMillis())),
-	                                    style = MaterialTheme.typography.titleSmall,
-	                                    fontWeight = FontWeight.Bold,
-	                                    color = MaterialTheme.colorScheme.primary,
-	                                    modifier = Modifier.padding(bottom = 8.dp)
-	                                )
-	
-	                                LazyColumn(
-	                                    modifier = Modifier.weight(1f),
-	                                    contentPadding = PaddingValues(bottom = 16.dp)
-	                                ) {
-	                                    items(items = filteredCalendarSessions, key = { it.sessionId }) { session ->
-	                                        SessionCard(
-	                                            session = session,
-	                                            events = loadEvents(session.sessionId),
-	                                            maskPassword = maskPassword,
-	                                            highlightText = if (searchQuery.isBlank()) null else searchQuery,
-	                                            onDeleteSession = { deleteTarget = session.sessionId }
-	                                        )
-	                                    }
-	                                }
-	                            }
+
+                            // ── Sessions for selected date (2-hour accordion) ──
+                            if (filteredCalendarSessions.isEmpty()) {
+                                EmptyHistoryView()
+                            } else {
+                                Text(
+                                    text = dateFormat.format(Date(selectedDateMillis ?: System.currentTimeMillis())),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                // Flatten all events for the selected day, bucket into 2-hour windows
+                                val dayEvents = remember(filteredCalendarSessions) {
+                                    filteredCalendarSessions
+                                        .flatMap { loadEvents(it.sessionId) }
+                                        .sortedBy { it.timestamp }
+                                }
+                                val buckets = remember(dayEvents) {
+                                    bucketEventsByTwoHours(dayEvents)
+                                }
+
+                                TimeBucketAccordion(
+                                    buckets = buckets,
+                                    maskPassword = maskPassword,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
 	                        }
 	                    }
 	                }
@@ -712,7 +817,12 @@ private fun EmptyHistoryView() {
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "📝", fontSize = 48.sp)
+        Icon(
+            Icons.Outlined.History,
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.typing_history_no_sessions),

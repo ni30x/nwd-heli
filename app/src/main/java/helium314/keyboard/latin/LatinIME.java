@@ -694,6 +694,14 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public void onDestroy() {
+        // Flush typing history before IME state is torn down
+        try {
+            TypingHistoryRecorder recorder = TypingHistoryRecorder.getInstance((Context) this);
+            recorder.onImeDestroyed();
+        } catch (Exception e) {
+            Log.e(TAG, "Error flushing typing history on destroy", e);
+        }
+
         mClipboardHistoryManager.onDestroy();
         mDictionaryFacilitator.closeDictionaries();
         mSettings.onDestroy();

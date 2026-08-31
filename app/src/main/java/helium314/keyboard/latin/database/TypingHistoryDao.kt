@@ -9,8 +9,11 @@ import androidx.core.database.getIntOrNull
 import androidx.core.database.getLongOrNull
 import androidx.core.database.getStringOrNull
 import helium314.keyboard.latin.utils.Log
+import helium314.keyboard.latin.utils.startOfLocalDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -19,6 +22,7 @@ class TypingHistoryDao private constructor(private val context: Context) {
     private val db: Database = Database.getInstance(context)
     private val writeQueue = ConcurrentLinkedQueue<TypingEvent>()
     private val scope = CoroutineScope(Dispatchers.IO)
+    private var debounceJob: Job? = null
     
     // Event types
     enum class EventType {
@@ -85,10 +89,21 @@ class TypingHistoryDao private constructor(private val context: Context) {
         )
         
         writeQueue.add(event)
-        
-        // Flush queue if it reaches threshold
+
+        // Flush queue if it reaches size threshold
         if (writeQueue.size >= BATCH_SIZE) {
+            debounceJob?.cancel()
             flushQueue()
+        } else {
+            // Debounce: flush after a short inactivity period so fewer events are lost
+            // if the process is killed. Tradeoff: more frequent small DB writes vs. a
+            // smaller data-loss window. With BATCH_SIZE=10 and DEBOUNCE_MS=2000, at most
+            // ~10 events (≈2 seconds of typing) can be lost on OOM kill — down from 50.
+            debounceJob?.cancel()
+            debounceJob = scope.launch {
+                delay(DEBOUNCE_MS)
+                flushQueue()
+            }
         }
     }
     
@@ -320,8 +335,8 @@ class TypingHistoryDao private constructor(private val context: Context) {
         )?.use { cursor ->
             while (cursor.moveToNext()) {
                 val ts = cursor.getLongOrNull(0) ?: continue
-                // Round down to start of day (strip hours/minutes/seconds)
-                val dayStart = (ts / 86400000) * 86400000
+                // Round down to start of local day (timezone-correct)
+                val dayStart = startOfLocalDay(ts)
                 dates.add(dayStart)
             }
         }
@@ -434,7 +449,10 @@ class TypingHistoryDao private constructor(private val context: Context) {
     
     companion object {
         private val TAG = TypingHistoryDao::class.java.simpleName
-        private const val BATCH_SIZE = 50
+        private const val BATCH_SIZE = 10
+        // Debounce delay: flush the queue after this many ms of inactivity.
+        // Keeps the data-loss window small without hammering the DB on every keystroke.
+        private const val DEBOUNCE_MS = 2000L
         
         // Table names
         const val TABLE_EVENTS = "TYPING_HISTORY_EVENTS"
