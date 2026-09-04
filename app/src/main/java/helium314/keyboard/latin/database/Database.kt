@@ -28,18 +28,27 @@ class Database private constructor(context: Context, name: String = NAME) : SQLi
             db.execSQL(ClipboardDao.ADD_MIME_TYPE_COLUMN)
         }
         if (oldVersion <= 3) {
-            // Add typing history tables
+            // Add typing history tables (IF NOT EXISTS to prevent crash on re-entry)
             db.execSQL(TypingHistoryDao.CREATE_EVENTS_TABLE)
             db.execSQL(TypingHistoryDao.CREATE_SESSIONS_TABLE)
             db.execSQL(TypingHistoryDao.CREATE_TIMESTAMP_INDEX)
             db.execSQL(TypingHistoryDao.CREATE_SESSION_INDEX)
             db.execSQL(TypingHistoryDao.CREATE_APP_INDEX)
         }
+        if (oldVersion <= 4) {
+            // Add is_finalized column to sessions table for crash-recovery support.
+            // Column defaults to 1 (finalized) so existing rows are treated as complete.
+            try {
+                db.execSQL("ALTER TABLE ${TypingHistoryDao.TABLE_SESSIONS} ADD COLUMN ${TypingHistoryDao.COL_IS_FINALIZED} INTEGER DEFAULT 1")
+            } catch (e: Exception) {
+                // Column may already exist from a partial previous upgrade
+            }
+        }
     }
 
     companion object {
         private val TAG = Database::class.java.simpleName
-        private const val VERSION = 4
+        private const val VERSION = 5
         const val NAME = "heliboard.db"
         private var instance: Database? = null
         fun getInstance(context: Context): Database {
