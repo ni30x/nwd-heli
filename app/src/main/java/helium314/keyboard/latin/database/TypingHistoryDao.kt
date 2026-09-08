@@ -483,6 +483,7 @@ class TypingHistoryDao private constructor(private val context: Context) {
         private const val COL_TOTAL_LINEBREAKS = "TOTAL_LINEBREAKS"
         private const val COL_HAS_PASSWORDS = "HAS_PASSWORDS"
         private const val COL_PREVIEW_TEXT = "PREVIEW_TEXT"
+        const val COL_IS_FINALIZED = "IS_FINALIZED"
         
         // SQL: Create events table
         const val CREATE_EVENTS_TABLE = """

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -45,10 +46,12 @@ import helium314.keyboard.latin.utils.startOfLocalDay
 import helium314.keyboard.settings.dialogs.BackupPasswordDialog
 import helium314.keyboard.settings.dialogs.TypingHistoryPasswordDialog
 import helium314.keyboard.settings.dialogs.PasswordDialogMode
-import helium314.keyboard.settings.screens.components.SessionCard
+import helium314.keyboard.settings.screens.components.SwipeableSessionCard
 import helium314.keyboard.settings.screens.components.TimeBucketAccordion
 import helium314.keyboard.settings.screens.components.bucketEventsByTwoHours
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -64,7 +67,8 @@ enum class ViewMode { ALL_RECENT, CALENDAR }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TypingHistoryViewerScreen(
-    onClickBack: () -> Unit
+    onClickBack: () -> Unit,
+    onClickExcludedApps: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val dao = TypingHistoryDao.getInstance(context)
@@ -111,7 +115,14 @@ fun TypingHistoryViewerScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(FilterType.ALL) }
     var maskPassword by remember { mutableStateOf(Settings.readTypingHistoryMaskPasswords(prefs)) }
+    // Single-session delete, triggered by a swipe (shows the existing warning dialog).
     var deleteTarget by remember { mutableStateOf<String?>(null) }
+    // Multi-select: entered via long-press on a session card. Empty set = not in
+    // multi-select mode. Bulk deletion also goes through a warning dialog.
+    var selectedSessionIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var showBulkDeleteConfirm by remember { mutableStateOf(false) }
+    val multiSelectActive by remember { derivedStateOf { selectedSessionIds.isNotEmpty() } }
+    BackHandler(enabled = multiSelectActive) { selectedSessionIds = emptySet() }
 
     // Settings state
     var showSettingsBar by remember { mutableStateOf(false) }
@@ -130,9 +141,12 @@ fun TypingHistoryViewerScreen(
     LaunchedEffect(isUnlocked) {
         if (isUnlocked) {
             isLoadingSessions = true
-            sessions = dao.getAllSessions()
-            totalSessions = sessions.size
-            totalEvents = dao.getTotalEventCount()
+            val (allSessions, totalEvCount) = withContext(Dispatchers.IO) {
+                Pair(dao.getAllSessions(), dao.getTotalEventCount())
+            }
+            sessions = allSessions
+            totalSessions = allSessions.size
+            totalEvents = totalEvCount
             isLoadingSessions = false
         }
     }
@@ -140,7 +154,7 @@ fun TypingHistoryViewerScreen(
     // Load which dates have sessions when entering Calendar mode or when sessions change
     LaunchedEffect(viewMode, sessions) {
         if (viewMode == ViewMode.CALENDAR) {
-            datesWithHistory = dao.getDatesWithSessions()
+            datesWithHistory = withContext(Dispatchers.IO) { dao.getDatesWithSessions() }
             // Auto-select today if nothing selected yet
             if (selectedDateMillis == null) {
                 val today = startOfLocalDay()
@@ -161,25 +175,63 @@ fun TypingHistoryViewerScreen(
             val startOfDay = cal.timeInMillis
             cal.add(Calendar.DAY_OF_MONTH, 1)
             val endOfDay = cal.timeInMillis
-            calendarSessions = dao.getSessionsByDateRange(startOfDay, endOfDay)
+            calendarSessions = withContext(Dispatchers.IO) {
+                dao.getSessionsByDateRange(startOfDay, endOfDay)
+            }
         }
     }
 
     fun deleteSession(sessionId: String) {
-        dao.deleteSession(sessionId)
-        eventsCache = eventsCache - sessionId
-        sessions = dao.getAllSessions()
-        totalSessions = sessions.size
-        totalEvents = dao.getTotalEventCount()
-        // Refresh calendar if active
-        selectedDateMillis?.let { ms ->
-            val cal = Calendar.getInstance().apply { timeInMillis = ms }
-            cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
-            val start = cal.timeInMillis; cal.add(Calendar.DAY_OF_MONTH, 1)
-            calendarSessions = dao.getSessionsByDateRange(start, cal.timeInMillis)
+        scope.launch(Dispatchers.IO) {
+            dao.deleteSession(sessionId)
+            val allSessions = dao.getAllSessions()
+            val totalEvCount = dao.getTotalEventCount()
+            val calSessions = selectedDateMillis?.let { ms ->
+                val cal = Calendar.getInstance().apply { timeInMillis = ms }
+                cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+                val start = cal.timeInMillis; cal.add(Calendar.DAY_OF_MONTH, 1)
+                dao.getSessionsByDateRange(start, cal.timeInMillis)
+            } ?: emptyList()
+            withContext(Dispatchers.Main) {
+                eventsCache = eventsCache - sessionId
+                sessions = allSessions
+                totalSessions = allSessions.size
+                totalEvents = totalEvCount
+                if (selectedDateMillis != null) {
+                    calendarSessions = calSessions
+                }
+                deleteTarget = null
+            }
         }
-        deleteTarget = null
+    }
+
+    /** Deletes every session in [sessionIds] (long-press multi-select → bulk delete). */
+    fun deleteSessions(sessionIds: Set<String>) {
+        if (sessionIds.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            sessionIds.forEach { dao.deleteSession(it) }
+            val allSessions = dao.getAllSessions()
+            val totalEvCount = dao.getTotalEventCount()
+            val calSessions = selectedDateMillis?.let { ms ->
+                val cal = Calendar.getInstance().apply { timeInMillis = ms }
+                cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+                val start = cal.timeInMillis; cal.add(Calendar.DAY_OF_MONTH, 1)
+                dao.getSessionsByDateRange(start, cal.timeInMillis)
+            } ?: emptyList()
+            withContext(Dispatchers.Main) {
+                eventsCache = eventsCache - sessionIds
+                sessions = allSessions
+                totalSessions = allSessions.size
+                totalEvents = totalEvCount
+                if (selectedDateMillis != null) {
+                    calendarSessions = calSessions
+                }
+                selectedSessionIds = emptySet()
+                showBulkDeleteConfirm = false
+            }
+        }
     }
 
     val backupLauncher = rememberLauncherForActivityResult(
@@ -220,7 +272,12 @@ fun TypingHistoryViewerScreen(
                     val result = backupManager.restoreBackup(password, data, true)
                     result.onSuccess { stats ->
                         statusMessage = "Restored: ${stats.totalEvents} events"
-                        sessions = dao.getAllSessions(); totalSessions = sessions.size; totalEvents = dao.getTotalEventCount()
+                        val (allSessions, totalEvCount) = withContext(Dispatchers.IO) {
+                            Pair(dao.getAllSessions(), dao.getTotalEventCount())
+                        }
+                        sessions = allSessions
+                        totalSessions = allSessions.size
+                        totalEvents = totalEvCount
                     }.onFailure { e -> statusMessage = "Restore failed: ${e.message}" }
                 } catch (e: Exception) { statusMessage = "Error: ${e.message}" }
             }
@@ -274,6 +331,38 @@ fun TypingHistoryViewerScreen(
 
     Scaffold(
         topBar = {
+            if (multiSelectActive) {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.typing_history_n_selected, selectedSessionIds.size)) },
+                    navigationIcon = {
+                        IconButton(onClick = { selectedSessionIds = emptySet() }) {
+                            Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.dialog_close))
+                        }
+                    },
+                    actions = {
+                        val allSelected = filteredSessions.isNotEmpty() &&
+                            filteredSessions.all { it.sessionId in selectedSessionIds }
+                        TextButton(onClick = {
+                            selectedSessionIds = if (allSelected) emptySet()
+                            else filteredSessions.map { it.sessionId }.toSet()
+                        }) {
+                            Text(
+                                stringResource(
+                                    if (allSelected) R.string.typing_history_deselect_all
+                                    else R.string.typing_history_select_all
+                                )
+                            )
+                        }
+                        IconButton(onClick = { showBulkDeleteConfirm = true }) {
+                            Icon(
+                                Icons.Default.DeleteOutline,
+                                contentDescription = stringResource(R.string.typing_history_delete_session),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                )
+            } else {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_screen_typing_history)) },
                 navigationIcon = {
@@ -298,6 +387,7 @@ fun TypingHistoryViewerScreen(
                     }
                 }
             )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -406,6 +496,13 @@ fun TypingHistoryViewerScreen(
                                     else
                                         stringResource(R.string.typing_history_set_password)
                                 )
+                            }
+
+                            OutlinedButton(
+                                onClick = onClickExcludedApps,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(stringResource(R.string.typing_history_exclude_apps))
                             }
 
                             Spacer(Modifier.height(4.dp))
@@ -567,12 +664,24 @@ fun TypingHistoryViewerScreen(
 	                                    contentPadding = PaddingValues(bottom = 16.dp)
 	                                ) {
 	                                    items(items = filteredSessions, key = { it.sessionId }) { session ->
-	                                        SessionCard(
+	                                        SwipeableSessionCard(
 	                                            session = session,
 	                                            events = loadEvents(session.sessionId),
 	                                            maskPassword = maskPassword,
 	                                            highlightText = if (searchQuery.isBlank()) null else searchQuery,
-	                                            onDeleteSession = { deleteTarget = session.sessionId }
+	                                            selectionMode = multiSelectActive,
+	                                            selected = session.sessionId in selectedSessionIds,
+	                                            onToggleSelected = {
+	                                                selectedSessionIds =
+	                                                    if (session.sessionId in selectedSessionIds)
+	                                                        selectedSessionIds - session.sessionId
+	                                                    else
+	                                                        selectedSessionIds + session.sessionId
+	                                            },
+	                                            onLongPress = {
+	                                                selectedSessionIds = selectedSessionIds + session.sessionId
+	                                            },
+	                                            onRequestDelete = { deleteTarget = session.sessionId }
 	                                        )
 	                                    }
 	                                }
@@ -745,7 +854,7 @@ fun TypingHistoryViewerScreen(
         )
     }
 
-    // Delete session confirmation
+    // Delete session confirmation (triggered by a swipe)
     deleteTarget?.let { sessionId ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
@@ -758,6 +867,32 @@ fun TypingHistoryViewerScreen(
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) {
+                    Text(stringResource(R.string.dialog_close))
+                }
+            }
+        )
+    }
+
+    // Bulk delete confirmation (triggered from the multi-select selection bar)
+    if (showBulkDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showBulkDeleteConfirm = false },
+            title = { Text(stringResource(R.string.typing_history_delete_session)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.typing_history_delete_selected_confirm,
+                        selectedSessionIds.size
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { deleteSessions(selectedSessionIds) }) {
+                    Text(stringResource(R.string.dialog_close), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBulkDeleteConfirm = false }) {
                     Text(stringResource(R.string.dialog_close))
                 }
             }
