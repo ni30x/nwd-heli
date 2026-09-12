@@ -650,4 +650,8 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static String readTypingHistorySalt(SharedPreferences prefs) {
         return prefs.getString(PREF_TYPING_HISTORY_SALT, Defaults.PREF_TYPING_HISTORY_SALT);
     }
+
+    public static void writeTypingHistoryMaskPasswords(SharedPreferences prefs, boolean maskPassword) {
+        prefs.edit().putBoolean(PREF_TYPING_HISTORY_MASK_PASSWORDS, maskPassword).apply();
+    }
 }

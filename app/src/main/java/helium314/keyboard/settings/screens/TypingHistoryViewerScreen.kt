@@ -115,6 +115,14 @@ fun TypingHistoryViewerScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(FilterType.ALL) }
     var maskPassword by remember { mutableStateOf(Settings.readTypingHistoryMaskPasswords(prefs)) }
+
+LaunchedEffect(Unit) {
+    // Whenever the preference might have changed externally, update our state
+    val currentMaskPassword = Settings.readTypingHistoryMaskPasswords(prefs)
+    if (maskPassword != currentMaskPassword) {
+        maskPassword = currentMaskPassword
+    }
+}
     // Single-session delete, triggered by a swipe (shows the existing warning dialog).
     var deleteTarget by remember { mutableStateOf<String?>(null) }
     // Multi-select: entered via long-press on a session card. Empty set = not in
@@ -465,6 +473,29 @@ fun TypingHistoryViewerScreen(
                                     onCheckedChange = { enabled ->
                                         if (enabled) { securityManager.enableFeature(); isEnabled = true }
                                         else { securityManager.disableFeature(); isEnabled = false }
+                                    }
+                                )
+                            }
+
+                            // Show Passwords toggle
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Show Passwords", style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        if (maskPassword) "Masked" else "Visible",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Switch(
+                                    checked = !maskPassword,  // Inverted: checked means SHOW passwords (not masked)
+                                    onCheckedChange = { showPasswords ->
+                                        maskPassword = !showPasswords
+                                        Settings.writeTypingHistoryMaskPasswords(prefs, maskPassword)
                                     }
                                 )
                             }
